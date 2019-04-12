@@ -1,0 +1,40 @@
+#I got this pseudo code,and I give it some Chinese notes of  me
+Given:
+    data – a set of observed data points(一组观察数据点）
+    model – a model that can be fitted to data points（可以用于拟合的模型，最小二乘法中可以是斜率）
+    n – minimum number of data points required to fit the model（拟合模型所需的最小数据点数）
+    k – maximum number of iterations allowed in the algorithm（允许的最大迭代次数
+    t – threshold value to determine when a data point fits a model（用于确定何时合适模型的阈值
+    d – number of close data points required to assert that a model fits well to data（认为模型适合数据所需的密集数据点数
+
+Return:
+    bestfit – model parameters which best fit the data (or nul if no good model is found)返回最适合的参数
+
+iterations = 0#迭代次数
+bestfit = null#返回值初始值
+besterr = something really large
+while iterations < k {
+    maybeinliers = n randomly selected values from data#从数据中任意取n个值，作为inlier
+    maybemodel = model parameters fitted to maybeinliers#根据随机值匹配合适的参数
+    alsoinliers = empty set#创建一个空集
+#对不在inliers里的每一个数据点遍历，如果点和预期的值相差小于t，则把该点添加进alsoinliers
+    for every point in data not in maybeinliers
+ {
+        if point fits maybemodel with an error smaller than t
+             add point to alsoinliers
+    }
+#如果alsoinliers里的数据量大于d,bettermodel为该模型参数
+    if the number of elements in alsoinliers is > d {
+        % this implies that we may have found a good model
+        % now test how good it is
+        bettermodel = model parameters fitted to all points in maybeinliers and alsoinliers
+        thiserr = a measure of how well model fits these points#衡量模型如何适合所有数据点的参数，可以用概率或方差表示
+#如果此模型的thiserr大于besterr，则取代besterr
+        if thiserr < besterr {
+            bestfit = bettermodel
+            besterr = thiserr
+        }
+    }
+    increment iterations#迭代次数加一，再次随机取值
+}
+return bestfit
