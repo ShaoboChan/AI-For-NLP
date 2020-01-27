@@ -170,11 +170,11 @@ def predict():
 
 def main_test():
     parser=argparse.ArgumentParser(description='Detector')
-    parser.add_argument('--batch_size',type=int,default=32,metavar='N',help='input batch size for training')
-    parser.add_argument('--test_batch_size',type=int,default=32,metavar='N')
+    parser.add_argument('--batch_size',type=int,default=64,metavar='N',help='input batch size for training')
+    parser.add_argument('--test_batch_size',type=int,default=64,metavar='N')
     parser.add_argument('--epochs',type=int,default=100,metavar='N',help='number of epoch to train')
     parser.add_argument('--lr',type=float,default=0.001,metavar='LR')
-    parser.add_argument('--momentum',type=float,default=0.5,metavar='M')
+    #parser.add_argument('--momentum',type=float,default=0.9,metavar='M')
     parser.add_argument('--no_cuda',action='store_true',default=False,help='disable CUDA training')
     parser.add_argument('--seed',type=int,default=1,metavar='S',help='random seed')
     parser.add_argument('--log_interval',type=str,default=True,help='save the current model')
@@ -190,7 +190,7 @@ def main_test():
     print('==>loading dataset')
     # train_set,test_set=get_train_test_set()
     train_set,test_set=get_train_test_set()
-    train_loader=torch.utils.data.DataLoader(train_set,batch_size=args.batch_size,shuffle=False)
+    train_loader=torch.utils.data.DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
     valid_loader=torch.utils.data.DataLoader(test_set,batch_size=args.test_batch_size)
 
     print('===>Building Model')
@@ -198,7 +198,8 @@ def main_test():
     model=Net().to(device)
     ######Loss func
     criterion_pts=nn.MSELoss()
-    optimizer=optim.SGD(model.parameters(),lr=args.lr,momentum=args.momentum)
+    optimizer=optim.Adam(model.parameters(),lr=args.lr,betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+    #Adam(params, lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
     if args.phase=='Train'or args.phase=='train':
         print('----------->start training')
          # train_losses,valid_losses= \
