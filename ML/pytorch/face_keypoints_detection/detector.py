@@ -112,7 +112,8 @@ def train(args,train_loader,valid_loader,model,criterion,optimizer,device):
             optimizer.zero_grad()
             output_pts=model(input_img)
             loss=pts_criterion(output_pts,target_pts)
-            loss.backward()
+            loss.mean().backward()
+            # loss.backward()
             optimizer.step()
 
             if batch_idx%args.log_interval==0:
@@ -170,10 +171,10 @@ def predict():
 
 def main_test():
     parser=argparse.ArgumentParser(description='Detector')
-    parser.add_argument('--batch_size',type=int,default=64,metavar='N',help='input batch size for training')
+    parser.add_argument('--batch_size',type=int,default=4,metavar='N',help='input batch size for training')
     parser.add_argument('--test_batch_size',type=int,default=64,metavar='N')
-    parser.add_argument('--epochs',type=int,default=100,metavar='N',help='number of epoch to train')
-    parser.add_argument('--lr',type=float,default=0.001,metavar='LR')
+    parser.add_argument('--epochs',type=int,default=20,metavar='N',help='number of epoch to train')
+    parser.add_argument('--lr',type=float,default=0.002,metavar='LR')
     #parser.add_argument('--momentum',type=float,default=0.9,metavar='M')
     parser.add_argument('--no_cuda',action='store_true',default=False,help='disable CUDA training')
     parser.add_argument('--seed',type=int,default=1,metavar='S',help='random seed')
@@ -192,13 +193,14 @@ def main_test():
     train_set,test_set=get_train_test_set()
     train_loader=torch.utils.data.DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
     valid_loader=torch.utils.data.DataLoader(test_set,batch_size=args.test_batch_size)
-
+    # loss.sum().backward()
     print('===>Building Model')
     #for single GPU
     model=Net().to(device)
     ######Loss func
-    criterion_pts=nn.MSELoss()
-    optimizer=optim.Adam(model.parameters(),lr=args.lr,betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+    criterion_pts=nn.SmoothL1Loss()
+    # criterion_pts=torch.nn.SmoothL1Loss(reduce=False, size_average=False)
+    optimizer=optim.Adam(model.parameters(),lr=args.lr,betas=(0.99, 0.999), eps=1e-08, weight_decay=0)
     #Adam(params, lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
     if args.phase=='Train'or args.phase=='train':
         print('----------->start training')
