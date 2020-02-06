@@ -19,8 +19,8 @@ df=pd.read_csv('train_addLabel.csv',header=None,sep=',')
 # print('labels:{}'.format(labels))     #(7351,)
 # print(labels.shape)
 class FeatureDataset(Dataset):
-    def __init__(self,csv_File,transform=None):
-        self.df=pd.read_csv('train_addLabel.csv',header=None,sep=',')
+    def __init__(self,dir,transform=None):
+        self.df=pd.read_csv(dir,header=None,sep=',')
         self.to_tensor=torch.FloatTensor()
         var_list=[]
         for i in range(2,7353):
@@ -36,7 +36,7 @@ class FeatureDataset(Dataset):
         # self.labels=df.iloc[2:7353,564]
 
     def __len__(self):
-        return len(self.df)
+        return len(self.df)-4
     def __getitem__(self, idx):
         # if torch.is_tensor(idx):
         #     idx = idx.tolist()
@@ -69,13 +69,24 @@ if __name__ == "__main__":
     # print('???????????')
     # print(feature[0])
     # print(type(feature),type(label))
-    var_f=FeatureDataset('./train_addLabel.csv')
-    for i in range(7350):
-        sample=var_f[i]
-        # print(i, sample['feature'].shape, sample['label'])
-    print(var_f.__len__())
-    sample1=var_f[1]
-    sample1['feature']
+    dataset=FeatureDataset('./train_addLabel.csv')
+    # for i in range(7350):
+    #     sample=var_f[i]
+    #     print(i, sample['feature'].shape, sample['label'])
+    # print(var_f.__len__())
+    # sample1=var_f[1]
+    # sample1['feature']
+    train_loader = torch.utils.data.DataLoader(dataset,
+                                               batch_size=64,
+                                               num_workers=1,
+                                               pin_memory=True,
+                                               shuffle=True)
+    print(train_loader)
+    for epoch in range(5):
+        i = 0
+        for sample in train_loader:
+            i += 1
+            print('epoch:{}|num:{}|feature:{}|label:{}'.format(epoch, i, sample['feature'].shape, sample['label']))
 
 
 
