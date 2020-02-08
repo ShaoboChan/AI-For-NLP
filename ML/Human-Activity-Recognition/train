@@ -1,0 +1,174 @@
+from __future__ import print_function
+import argparse
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.utils.data.sampler import SubsetRandomSampler
+from torchvision import datasets, transforms
+from torch.utils.data.dataset import Dataset
+import runpy
+import pandas as pd
+import numpy as np
+import os
+# from data import FeatureDataset
+class FeatureDataset(Dataset):
+    def __init__(self,dir,transform=None):
+        self.df=pd.read_csv(dir,header=None,sep=',')
+        self.to_tensor=torch.FloatTensor()
+        var_list=[]
+
+        for i in range(2,7353):
+
+            var_list.append(list(map(float,self.df.iloc[i,1:562])))
+
+        self.features=var_list
+
+        # self.features=df.iloc[2:7353,0:562]
+        # self.features=np.array(self.features).astype(np.float32)
+        labels=list(map(int,self.df.iloc[2:7353,564]))
+        self.labels=np.array(labels)
+        # self.root_dir=root_dir
+        # self.labels=df.iloc[2:7353,564]
+
+    def __len__(self):
+        return len(self.df)-4
+    def __getitem__(self, idx):
+        # if torch.is_tensor(idx):
+        #     idx = idx.tolist()
+        feature=self.features[idx]
+        feature=np.array([feature])
+        feature=feature.astype('float')
+        # feature=np.tile(feature, (4, 1))
+        # feature=feature.reshape(20,28)
+        label=self.labels[idx]
+
+        # feature=list(map(float,feature))
+
+        # self.feature=feature.astype('float')
+
+        # feature=self.to_tensor(feature)
+        # label=self.labels[idx]
+        sample={'feature':feature,'label':label}
+        return sample
+# class Net(nn.Module):
+#     def _init_(self,input_size,hidden_size):
+#         super(Net,self)._init_()
+#         self.fc1=nn.Linear(input_size,hidden_size)
+#         self.fc2=nn.Linear(hidden_size,hidden_size)
+#         self.fc3=nn.Linear(hidden_size,6)
+#     def forward(self,x):
+#         x=self.fc1(x)
+#         x=self.fc2(x)
+#         x = self.fc3(x)
+#         return x
+#
+#
+
+# class HARmodel(nn.Module):
+#     """Model for human-activity-recognition."""
+#     def __init__(self, input_size, num_classes):
+#         super().__init__()
+#
+#         # Extract features, 1D conv layers
+#         self.features = nn.Sequential(
+#             nn.Conv1d(input_size,8, 16),#
+#             nn.ReLU(),
+#             nn.Dropout(),
+#             nn.Conv1d(8, 8, 16),
+#             nn.ReLU(),
+#             nn.Dropout(),
+#             nn.Conv1d(8, 8, 16),
+#             nn.ReLU(),
+#             )
+#         # Classify output, fully connected layers
+#         self.classifier = nn.Sequential(
+#         	nn.Dropout(),
+#             nn.Dropout(),
+#             nn.Dropout(),
+#         	nn.Linear(33024, 128),
+#         	nn.ReLU(),
+#             nn.Linear(128 , 128),
+#             nn.ReLU(),
+#         	nn.Dropout(),
+#             # nn.Linear(2048 , 128),
+#             # nn.ReLU(),
+#         	# nn.Dropout(),
+#         	nn.Linear(128, num_classes),
+#         	)
+#
+#     def forward(self, x):
+#     	x = self.features(x)
+#     	x = x.view(x.size(0), 33024)
+#     	out = self.classifier(x)
+#     	return out
+
+class HARmodel(nn.Module):
+      def __init__(self):
+          super(HARmodel,self).__init__()
+          self.layer1 = nn.Sequential(
+                      nn.Conv1d(1,100,2),
+                      nn.BatchNorm1d(100),
+                      nn.ReLU(),
+                      nn.MaxPool1d(8))
+          self.layer2 = nn.Sequential(
+                      nn.Conv1d(100,50,2),
+                      nn.BatchNorm1d(50),
+                      nn.ReLU(),
+                      nn.MaxPool1d(8))
+          self.fc = nn.Linear(400,6)
+      def forward(self,x):
+          #input.shape:(16,1,425)
+          out = self.layer1(x)
+          out=self.layer2(out)
+          out = out.view(out.size(0),-1)#torch.Size([16, 400])
+          # self.len_Linear=len(out)
+          out = self.fc(out)
+          return out
+
+def Train(train_loader,model,criterion,optimizer,device,epochs):
+    model.train()
+    scheduler=torch.optim.lr_scheduler.ExponentialLR(optimizer,gamma=0.95)
+
+    train_losses=[]
+    print('-------------------start training--------------------------------------------------')
+    for epoch in range(epochs):
+        model.train()
+        scheduler.step()
+        sum_loss=0.
+        for i,sample in enumerate(train_loader):
+            x=sample['feature']
+
+            output=model(x.float())
+            # print(output.size())
+            targets=sample['label']
+            targets=targets.long()
+            loss=criterion(output,targets)
+            sum_loss+=loss
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if i%16==0:
+                print("epoch:{}/{}|iter:{}|loss:{}".format(epoch,epochs,i,sum_loss/i))
+
+
+if __name__ == '__main__':
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    criterion = nn.CrossEntropyLoss()
+    model=HARmodel()
+    model=model.float()
+    optimizer = torch.optim.Adam(model.parameters(),lr=0.001,betas=(0.99, 0.999), eps=1e-08, weight_decay=0)
+    dataset=FeatureDataset('./train_addLabel.csv')
+    train_loader = torch.utils.data.DataLoader(dataset,
+                                               batch_size=16,
+                                               num_workers=1,
+                                               pin_memory=True,
+                                               shuffle=True)
+    epochs=100
+
+    Train(train_loader, model, criterion, optimizer, device, epochs=epochs)
+
+
+
+
