@@ -24,9 +24,9 @@ class FeatureDataset(Dataset):
             var_list.append(list(map(float, self.df.iloc[i, 1:562])))
 
         self.features = var_list
-        # self.features=df.iloc[2:7353,0:562]
+        # self.features=df.iloc[2:7353,0:562]#特征值序列
         # self.features=np.array(self.features).astype(np.float32)
-        labels = list(map(int, self.df.iloc[2:7353, 564]))
+        labels = list(map(int, self.df.iloc[2:7353, 564]))#标签列
         self.labels = np.array(labels)
         # self.root_dir=root_dir
         # self.labels=df.iloc[2:7353,564]
@@ -35,13 +35,9 @@ class FeatureDataset(Dataset):
         return len(self.df) - 4
 
     def __getitem__(self, idx):
-        # if torch.is_tensor(idx):
-        #     idx = idx.tolist()
         feature = self.features[idx]
         feature = np.array([feature])
         feature = feature.astype('float')
-        # feature=np.tile(feature, (4, 1))
-        # feature=feature.reshape(20,28)
         label = self.labels[idx]
 
         # feature=list(map(float,feature))
@@ -50,7 +46,7 @@ class FeatureDataset(Dataset):
 
         # feature=self.to_tensor(feature)
         # label=self.labels[idx]
-        sample = {'feature': feature, 'label': label}
+        sample = {'feature': feature, 'label': label}#数据封装
         return sample
 
 
@@ -147,7 +143,8 @@ class Vali_FeatureDataset(Dataset):
 #     	x = x.view(x.size(0), 33024)
 #     	out = self.classifier(x)
 #     	return out
-
+##############################################
+##############一维卷积########################
 class HARmodel(nn.Module):
     def __init__(self):
         super(HARmodel, self).__init__()
@@ -169,7 +166,7 @@ class HARmodel(nn.Module):
         # input.shape:(16,1,425)
         out = self.layer1(x)
         out = self.layer2(out)
-        out = out.view(out.size(0), -1)  # torch.Size([16, 400])
+        out = out.view(out.size(0), -1)  # torch.Size([16, 400])#平摊开来
         # self.len_Linear=len(out)
         out = self.fc(out)
         return out
@@ -177,32 +174,29 @@ class HARmodel(nn.Module):
 
 def Train(train_loader, valid_loader, model, criterion, optimizer, device, save_model, epochs, save_dir):
     model.train()
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)#学习率的异步
 
     train_losses = []
     print('-------------------start training--------------------------------------------------')
     for epoch in range(epochs):
-        model.train()
+        model.train()#训练模式
         scheduler.step()
         # sum_loss=0.
         for i, sample in enumerate(train_loader):
             x = sample['feature']
-
             output = model(x.float())
             # print(output.size())
             targets = sample['label']
             targets = targets.long()
             # print(targets.size())
-            loss = criterion(output, targets)
+            loss = criterion(output, targets)##计算loss
             # sum_loss+=loss.item()
-            optimizer.zero_grad()
-            loss.sum().backward()
-            # loss.backward()
-            # loss.mean().backward()
+            optimizer.zero_grad()####每一个batch优化器参数清零
+            loss.sum().backward()####计算bp
             optimizer.step()
 
             if i % 20 == 0:
-                print('=====================================训练========================================')
+                print('=====================================训练=================================================')
                 print("epoch:{}/{}|iter:{}|loss:{}".format(epoch, epochs, i, loss.item()))
         #######################vali################################################
 
@@ -210,7 +204,7 @@ def Train(train_loader, valid_loader, model, criterion, optimizer, device, save_
         acc_total = 0.
         valid_loss = 0.
         model.eval()
-        with torch.no_grad():
+        with torch.no_grad():################训练时不更新参数
             valid_batch_cnt = 0.
 
             for valid_idx, valid_sample in enumerate(valid_loader):
@@ -219,10 +213,11 @@ def Train(train_loader, valid_loader, model, criterion, optimizer, device, save_
                 target_pts = valid_sample['label']
                 target_pts = target_pts.long()
                 output_pts = model(feature.float())
-                rightOrnot=torch.argmax(output_pts,dim=1)
+                rightOrnot=torch.argmax(output_pts,dim=1)#获得输出的最大概率的值
 
                 # print('结果',rightOrnot,'标签',target_pts)
                 acc = 0.
+                #######计算正确率##################
                 for i in range(len(rightOrnot)):
                     res= rightOrnot[i]==target_pts[i]
                     acc+=res
@@ -231,12 +226,14 @@ def Train(train_loader, valid_loader, model, criterion, optimizer, device, save_
                         print('结果：',rightOrnot,rightOrnot.size(),'目标：',target_pts,target_pts.size())
                 acc_total+=acc.item()
                 # acc_total/=len(rightOrnot)
+               ############# 计算loss值############
                 valid_loss = criterion(output_pts, target_pts)
                 valid_mean_pts_loss += valid_loss.item()
             valid_mean_pts_loss /= valid_batch_cnt * 1.0
             acc_total/=valid_batch_cnt*16
             print('=================================测试========================================================')
             print('valid:pts_loss:{:.6f}|acc:{}'.format(valid_mean_pts_loss,acc_total))
+            #################每个epoch保存model##############
         if save_model:
             saved_model_name = os.path.join(save_dir, 'classi_epoch' + '_' + str(epoch) + '.pt')
             torch.save(model.state_dict(), saved_model_name)
@@ -244,10 +241,14 @@ def Train(train_loader, valid_loader, model, criterion, optimizer, device, save_
 
 
 if __name__ == '__main__':
+    ####cpu or gpu############
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    ####分类模型用crossentropy计算交叉熵一次性分类##############
     criterion = nn.CrossEntropyLoss()
     model = HARmodel()
+    ###########同一数据类型#########
     model = model.float()
+    ###########Adam优化器，学习率lr=0.001,其他为默认值################
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.99, 0.999), eps=1e-08, weight_decay=0)
     train_dataset = FeatureDataset('./train_addLabel_int.csv')
     vali_dataset = Vali_FeatureDataset('./test_addLabel_int.csv')
