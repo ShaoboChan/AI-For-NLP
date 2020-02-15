@@ -24,7 +24,6 @@ class FeatureDataset(Dataset):
             var_list.append(list(map(float, self.df.iloc[i, 1:562])))
 
         self.features = var_list
-
         # self.features=df.iloc[2:7353,0:562]
         # self.features=np.array(self.features).astype(np.float32)
         labels = list(map(int, self.df.iloc[2:7353, 564]))
