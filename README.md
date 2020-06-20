@@ -1,2 +1,2 @@
 # 
-*some project with torch*
+*some projects with torch*
