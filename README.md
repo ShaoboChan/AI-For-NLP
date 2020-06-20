@@ -1,2 +1,2 @@
 # 
-*some projects with torch*
+*some projects about image processing*
